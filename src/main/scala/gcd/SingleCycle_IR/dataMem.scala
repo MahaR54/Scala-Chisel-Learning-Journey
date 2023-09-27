@@ -12,21 +12,13 @@ class dataMem extends Module {
     val store = Input(Bool())
     val load = Input(Bool())
     val readData = Output(Vec(4, UInt(8.W)))
-    // val readData = Output(SInt(dataWidth.W))
   })
-  io.readData(0):=1.U
-  io.readData(1):=1.U
-  io.readData(2):=1.U
-  io.readData(3):=1.U
+
    val mem = Mem(1024, Vec(4, UInt(8.W)))
-
-  // val mem = Mem(depth, SInt(dataWidth.W))
-
-  when(io.store) {
+   when(io.store) {
     mem.write(io.addr, io.writeData, io.mask)
-  }.otherwise{
-  io.readData := mem(io.addr)
   }
+  io.readData := mem(io.addr)
   
 }
 //   val io = IO(new Bundle {

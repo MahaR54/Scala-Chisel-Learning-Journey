@@ -1,16 +1,17 @@
 package SingleCycle_IR
 import chisel3._ 
 import chisel3.util._ 
-// import chisel3.experimental.loadMemoryFromFile
+import chisel3.util.experimental.loadMemoryFromFile
 
 class TopModule extends Module{
     val io=IO(new Bundle{
-        val out = Output(SInt(32.W))
+        // val out = Output(SInt(32.W))
     })
 
     val pc=Module(new Pc)
+    dontTouch(pc.io)
     val registerFile=Module(new RagFile)
-    val IM=Module(new InstMem)
+    val IM=Module(new InstMem("/home/maha/Downloads/Scala-Chisel-Learning-Journey-main/src/main/scala/gcd/SingleCycle_IR/input.txt"))
     val Alu=Module(new ALU)
     // val BR=Module(new Branch)
     val DM=Module(new dataMem)
@@ -20,24 +21,10 @@ class TopModule extends Module{
     val ld=Module(new Load)
 
     //pc
-    pc.io.in:=Mux(IM.io.data_out(6,0)==="b1101111".U,(IM.io.data_out).asUInt,//jal
+    pc.io.in:=Mux(IM.io.data_out(6,0)==="b1101111".U,(IG.io.imm).asUInt,//jal
     Mux(IM.io.data_out(6,0)==="b1100011".U,// branch
     Mux(Alu.io.out===1.S,(IG.io.imm<<1.U).asUInt,4.U),
     Mux(IM.io.data_out(6,0)==="b1100111".U, (Alu.io.out).asUInt,4.U)))//jalr
-
-    // when(IM.io.data_out(6,0)==="b1101111".U){//jal
-    //     pc.io.in:=(IG.io.imm).asUInt
-    // }
-    // .elsewhen(IM.io.data_out(6,0)==="b1100011".U && Alu.io.out===1.S){//branch 
-        
-    //         pc.io.in:=(IG.io.imm<<1.U).asUInt//1 rightshift krwate tw exact address btata kai kitni jump krni hsi
-    // }
-    
-    // .elsewhen(IM.io.data_out(6,0)==="b1100111".U){//jalr
-    //     pc.io.in:=(Alu.io.out).asUInt
-    // }.otherwise{
-    //     pc.io.in:=4.U
-    //     }
 
     //pc enable is used to jump
     pc.io.enb:=cu.io.jump_pc
@@ -63,10 +50,10 @@ class TopModule extends Module{
     registerFile.io.Wback:= IG.io.imm
    }
     .elsewhen(cu.io.inst(6,0)==="b0010111".U){//auipc
-    registerFile.io.Wback:=(pc.io.out).asSInt + IG.io.imm
+    registerFile.io.Wback:=((pc.io.out).asSInt + IG.io.imm)
    }
     .elsewhen(cu.io.inst(6,0)==="b1101111".U){//j-type
-    registerFile.io.Wback:=(pc.io.out).asSInt+(4.S)
+    registerFile.io.Wback:=((pc.io.out).asSInt+(4.S))
    }
     .elsewhen(cu.io.inst(6,0)==="b1100111".U){//jalr
     registerFile.io.Wback:=(pc.io.out).asSInt+(4.S)
@@ -92,29 +79,18 @@ class TopModule extends Module{
     Alu.io.alu_Op:=cu.io.fun3_7
 
     //data memory
-      val cal = RegInit (0.U(32.W))
+     // val cal = RegInit (0.U(32.W))
       // val cal = Output(SInt(32.W))
       DM.io.mask(0):=str.io.mask(0)
       DM.io.mask(1):=str.io.mask(1)
       DM.io.mask(2):=str.io.mask(2)
       DM.io.mask(3):=str.io.mask(3)
 
-      DM.io.mask(0):=0.B
-      DM.io.mask(1):=0.B
-      DM.io.mask(2):=0.B
-      DM.io.mask(3):=0.B
-
-      DM.io.writeData(0):=0.U
-      DM.io.writeData(1):=0.U
-      DM.io.writeData(2):=0.U
-      DM.io.writeData(3):=0.U
 
       DM.io.fun3:=cu.io.fun3_7
-      cal:=(Cat(cu.io.inst(31,25),cu.io.inst(11,7))+(registerFile.io.read_rs1).asUInt).asUInt
-      DM.io.addr:=Mux(cu.io.inst(6,0)==="b0000011".U,
-      (Alu.io.out(11,2)).asUInt,
-      Mux(cu.io.inst(6,0) === "b0100011".U,cal,
-       0.U))
+    //   cal:=(Cat(cu.io.inst(31,25),cu.io.inst(11,7))+(registerFile.io.read_rs1).asUInt).asUInt
+       DM.io.addr:=Mux(cu.io.inst(6,0)==="b0000011".U,(Alu.io.out).asUInt,
+       Mux(cu.io.inst(6,0)==="b0100011".U,(Cat(cu.io.inst(31,25),cu.io.inst(11,7))+(registerFile.io.read_rs1).asUInt).asUInt,0.U))
        DM.io.enb:=cu.io.WB
        DM.io.writeData:= str.io.out
        DM.io.store := cu.io.store
@@ -129,20 +105,20 @@ class TopModule extends Module{
     //store
     str.io.fun3:=cu.io.fun3_7
     str.io.in:=(registerFile.io.read_rs2).asUInt
-    when(cu.io.inst(6,0)==="b0000011".U){
-    str.io.adr:=(Alu.io.out).asUInt
-    }.elsewhen(cu.io.inst(6,0)==="b0100011".U){
-        str.io.adr:=(Cat(cu.io.inst(31,25),cu.io.inst(11,7)))+(registerFile.io.read_rs1).asUInt
-    }.otherwise{
-        str.io.adr:=0.U
-    }
+    str.io.adr:=Mux(cu.io.inst(6,0)==="b0000011".U,(Alu.io.out).asUInt,
+    Mux(cu.io.inst(6,0)==="b0100011".U,(Cat(cu.io.inst(31,25),cu.io.inst(11,7))+(registerFile.io.read_rs1).asUInt).asUInt,0.U))
+    // when(cu.io.inst(6,0)==="b0100011".U){
+    //     str.io.adr:=(Cat(cu.io.inst(31,25),cu.io.inst(11,7)))+(registerFile.io.read_rs1).asUInt
+    // }.otherwise{
+    //     str.io.adr:=0.U
+    // }
 
     //load
     ld.io.fun3:=cu.io.fun3_7
     ld.io.in:=DM.io.readData
     ld.io.adr:=(Alu.io.out(1,0)).asUInt
 
-    io.out := registerFile.io.Wback
+    // io.out := registerFile.io.Wback
 
 }
    

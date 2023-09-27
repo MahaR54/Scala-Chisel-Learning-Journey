@@ -13,7 +13,7 @@ class RagFile extends Module {
         val read_rs1 = Output(SInt(32.W))
         val read_rs2 = Output(SInt(32.W))
     })
-    val regs =Reg(Vec(32,SInt( 32.W)))
+    val regs =RegInit(VecInit(Seq.fill(32)(0.S (32.W))))
     when (io.rs1.orR){
         io.read_rs1 := regs(io.rs1)
     }.otherwise{

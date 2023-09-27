@@ -4,14 +4,14 @@ import chisel3.util._
 import chisel3.stage.ChiselStage
 object ALUOP {
     val ALU_ADD = 0.U(4.W)
-    val ALU_SUB = 8.U(4.W)
-    val ALU_AND = 7.U(4.W)
-    val ALU_OR  = 6.U(4.W)
-    val ALU_XOR = 4.U(4.W)
-    val ALU_SLT = 2.U(4.W)
     val ALU_SLL = 1.U(4.W)
+    val ALU_SLT = 2.U(4.W)
     val ALU_SLTU= 3.U(4.W)
+    val ALU_XOR = 4.U(4.W)
     val ALU_SRL = 5.U(4.W)
+    val ALU_OR  = 6.U(4.W)
+    val ALU_AND = 7.U(4.W)
+    val ALU_SUB = 8.U(4.W)
     val ALU_SRA = 13.U(4.W)
 }
 
@@ -69,39 +69,36 @@ class ALU extends Module  {
     } // SLTU
     .elsewhen(io.alu_Op ===  ALU_SLTU) {
       io.out := ((io.in_A < io.in_B).asUInt).asSInt
+    }.otherwise{
+      io.out:=0.S
     }
  }
     // load address calculation
     .elsewhen(io.opcode === "b0000011".U) { //offset+ baseaddress
-      io.out := io.in_A+io.in_B
+      io.out := io.in_A + io.in_B
     }
      //jalr 
     .elsewhen(io.opcode === "b1100111".U) { //in_B=imm + in_A=returnAddress
-      io.out := io.in_A + io.in_B 
+      io.out :=  io.in_B 
     }
     
     
     //branch  
     .elsewhen(io.opcode ==="b1100011".U){
-    switch (io.alu_Op) {
-    is(ALU_Beq) { // BEQ
-       io.out:=(io.in_A === io.in_B).asSInt 
-    }
-    is(ALU_Bne) { // BNE
+    when(io.alu_Op===ALU_Beq) {// BEQ
+       io.out:=Mux(io.in_A === io.in_B, 1.S, 0.S)
+    }.elsewhen(io.alu_Op===ALU_Bne) {// BNE
      io.out:=Mux(io.in_A =/= io.in_B, 1.S, 0.S)
+    }.elsewhen(io.alu_Op===ALU_Blt) {//blt
+       io.out:=Mux(io.in_A < io.in_B, 1.S, 0.S)
+    }.elsewhen(io.alu_Op===ALU_Bge) { //bge
+       io.out:=Mux(io.in_A >= io.in_B, 1.S, 0.S)
+   }.elsewhen(io.alu_Op===ALU_Bltu) {//bltu
+       io.out:=Mux(io.in_A.asUInt < io.in_B.asUInt, 1.S, 0.S) 
+   }.elsewhen(io.alu_Op===ALU_Bgeu) {//bgeu
+       io.out:=Mux(io.in_A.asUInt >= io.in_B.asUInt, 1.S, 0.S)
+   }.otherwise{
+      io.out:=0.S
     }
-    is(ALU_Blt){ //blt
-       io.out:=(io.in_A < io.in_B ).asSInt
-    }
-    is (ALU_Bge){ //bge
-       io.out:=(io.in_A >= io.in_B).asSInt
-   }
-   is (ALU_Bltu){ //bltu
-       io.out:=(io.in_A.asUInt < io.in_B.asUInt).asSInt   
-   }
-   is(ALU_Bgeu){ //bgeu
-       io.out:=(io.in_A.asUInt >= io.in_B.asUInt).asSInt
-   }
   }
-    }
 }

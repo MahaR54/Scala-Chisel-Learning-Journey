@@ -19,7 +19,6 @@ class Load extends Module {
         val adr = Input(UInt(2.W))
     })
     io.out := 0.S
-     val pc = RegInit (0.U(32.W))
      when(io.fun3 === Load_B){
       when(io.adr===0.U){
         io.out := Cat(Fill(24,(io.in(0))(7)),io.in(0)).asSInt
